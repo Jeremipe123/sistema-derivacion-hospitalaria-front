@@ -73,7 +73,7 @@ export function Navbar({ vistaActual, setVistaActual, conectado, darkMode, setDa
                         }`}>
                         <Radio className={`w-3.5 h-3.5 ${conectado ? 'text-emerald-500 animate-pulse' : 'text-slate-400'}`} />
                         <span className={conectado ? 'text-emerald-500' : 'text-slate-500'}>
-                            {conectado ? 'En Vivo' : 'Off'}
+                            {conectado ? 'En Vivo' : 'Inactivo'}
                         </span>
                     </div>
 
