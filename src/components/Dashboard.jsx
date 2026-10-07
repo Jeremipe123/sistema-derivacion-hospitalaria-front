@@ -117,7 +117,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                     <div>
                         <h2 className={`text-lg font-bold flex items-center gap-2 ${textColor}`}>
                             <Building2 className="w-5 h-5 text-blue-500" />
-                            Red Hospitalaria Activa (Semaforizada)
+                            Red Hospitalaria Activa
                         </h2>
                         <p className={`text-xs mt-0.5 ${subTextColor}`}>
                             Mostrando los {hospitalesOrdenados.length} centros principales en tiempo real
@@ -258,10 +258,10 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                             <td className="p-3.5">
                                                 <span
                                                     className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${t.paciente?.triage === 'VERDE'
-                                                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                                                            : t.paciente?.triage === 'ROJO'
-                                                                ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
-                                                                : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+                                                        : t.paciente?.triage === 'ROJO'
+                                                            ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+                                                            : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
                                                         }`}
                                                 >
                                                     {t.paciente?.triage === 'VERDE' ? 'BAJA' : t.paciente?.triage === 'ROJO' ? 'ALTA' : 'MEDIA'}

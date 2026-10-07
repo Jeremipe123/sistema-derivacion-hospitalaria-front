@@ -38,9 +38,10 @@ export function FormularioTriage({ onDerivacionExitosa, darkMode = true }) {
         setError(null)
         setResultado(null)
 
+        // Concatenación de nacionalidad y número de cédula (ej. V-28123456)
         const payload = {
             ...formData,
-            cedula_completa: `${formData.nacionalidad}-${formData.cedula}`
+            cedula: `${formData.nacionalidad}-${formData.cedula}`
         }
 
         try {
@@ -152,7 +153,6 @@ export function FormularioTriage({ onDerivacionExitosa, darkMode = true }) {
                                 />
                             </div>
 
-                            {/* Tipo de Sangre Opcional */}
                             <div className="md:col-span-2">
                                 <label className={`block text-xs font-semibold mb-1 ${textColor}`}>
                                     Tipo de Sangre <span className={`font-normal ${subTextColor}`}>(Opcional)</span>
@@ -200,7 +200,7 @@ export function FormularioTriage({ onDerivacionExitosa, darkMode = true }) {
                         </div>
                     </div>
 
-                    {/* Requerimientos Clínicos (UCI / Quirófano) */}
+                    {/* Requerimientos Clínicos */}
                     <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl border ${darkMode ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-50 border-slate-200'
                         }`}>
                         <label className={`flex items-center gap-3 cursor-pointer p-1 rounded-lg transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-100'

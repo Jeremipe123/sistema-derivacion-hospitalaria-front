@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react'
 import API from './services/api'
 import { socket } from './services/socket'
@@ -93,7 +94,7 @@ export default function App() {
           />
         )}
         {vistaActual === 'estadisticas' && (
-          <EstadisticasPanel darkMode={darkMode} />
+          <EstadisticasPanel hospitales={hospitales} darkMode={darkMode} />
         )}
       </main>
     </div>

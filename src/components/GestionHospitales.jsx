@@ -21,7 +21,6 @@ export function GestionHospitales({ hospitales = [], onUpdate, darkMode = true }
 
     const [form, setForm] = useState(formInicial)
 
-    // Semáforo dinámico de estado hospitalario
     const getBadgeEstado = (estado) => {
         switch (estado) {
             case 'DISPONIBLE':
@@ -76,9 +75,13 @@ export function GestionHospitales({ hospitales = [], onUpdate, darkMode = true }
     }
 
     const toggleInactivar = async (h) => {
-        const nuevoEstado = h.estado_operativo === 'INACTIVO' ? 'DISPONIBLE' : 'INACTIVO'
-        await API.patch(`/hospitales/${h.id}/estado`, { estado_operativo: nuevoEstado })
-        if (onUpdate) onUpdate()
+        try {
+            const nuevoEstado = h.estado_operativo === 'INACTIVO' ? 'DISPONIBLE' : 'INACTIVO'
+            await API.patch(`/hospitales/${h.id}/estado`, { estado_operativo: nuevoEstado })
+            if (onUpdate) onUpdate()
+        } catch (err) {
+            console.error('Error al inactivar/activar hospital:', err)
+        }
     }
 
     const cardBg = darkMode ? 'bg-slate-900/90 border-slate-800/80' : 'bg-white border-slate-200 shadow-xl'
@@ -144,8 +147,8 @@ export function GestionHospitales({ hospitales = [], onUpdate, darkMode = true }
                                         <button
                                             onClick={() => toggleInactivar(h)}
                                             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${h.estado_operativo === 'INACTIVO'
-                                                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
-                                                    : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30'
+                                                ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
+                                                : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30'
                                                 }`}
                                             title={h.estado_operativo === 'INACTIVO' ? 'Activar' : 'Inactivar'}
                                         >
