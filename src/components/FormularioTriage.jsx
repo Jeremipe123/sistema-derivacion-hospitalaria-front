@@ -21,16 +21,49 @@ export function FormularioTriage({ onDerivacionExitosa, darkMode = true }) {
     const [resultado, setResultado] = useState(null)
     const [error, setError] = useState(null)
 
-    // Solo números y máximo 8 dígitos
+    // 1. Cédula: Solo números y máximo 8 dígitos
     const handleCedulaChange = (e) => {
         const num = e.target.value.replace(/\D/g, '').slice(0, 8)
-        setFormData({ ...formData, cedula: num })
+        setFormData((prev) => ({ ...prev, cedula: num }))
+    }
+
+    // 2. Nombre: Solo letras, letras con acentos, 'ñ' y espacios
+    const handleNombreChange = (e) => {
+        const soloLetras = e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, '')
+        setFormData((prev) => ({ ...prev, nombre: soloLetras }))
+    }
+
+    // 3. Edad: Solo números con rango limitado (0 a 120)
+    const handleEdadChange = (e) => {
+        const value = e.target.value
+        if (value === '') {
+            setFormData((prev) => ({ ...prev, edad: '' }))
+            return
+        }
+        const parsed = parseInt(value, 10)
+        if (!isNaN(parsed)) {
+            // Clampar valor entre 0 y 120
+            const edadClamp = Math.min(Math.max(parsed, 0), 120)
+            setFormData((prev) => ({ ...prev, edad: edadClamp }))
+        }
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault()
+
+        // Validaciones al enviar
         if (formData.cedula.length < 5) {
-            setError('La cédula debe contener al menos 5 dígitos.')
+            setError('La cédula debe contener entre 5 y 8 dígitos.')
+            return
+        }
+
+        if (!formData.nombre.trim()) {
+            setError('Por favor ingrese un nombre válido (solo caracteres de texto).')
+            return
+        }
+
+        if (formData.edad === '' || formData.edad < 0 || formData.edad > 120) {
+            setError('La edad debe ser un número entero entre 0 y 120 años.')
             return
         }
 
@@ -120,6 +153,7 @@ export function FormularioTriage({ onDerivacionExitosa, darkMode = true }) {
                                     </select>
                                     <input
                                         type="text"
+                                        inputMode="numeric"
                                         required
                                         value={formData.cedula}
                                         onChange={handleCedulaChange}
@@ -130,29 +164,34 @@ export function FormularioTriage({ onDerivacionExitosa, darkMode = true }) {
                                 </div>
                             </div>
 
+                            {/* Nombre Completo */}
                             <div>
                                 <label className={`block text-xs font-semibold mb-1 ${textColor}`}>Nombre Completo</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.nombre}
-                                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                                    onChange={handleNombreChange}
                                     className={`w-full rounded-xl px-3.5 py-2.5 text-sm border focus:outline-none focus:border-blue-500 ${inputBg}`}
                                     placeholder="Juan Pérez"
                                 />
                             </div>
 
+                            {/* Edad */}
                             <div>
                                 <label className={`block text-xs font-semibold mb-1 ${textColor}`}>Edad</label>
                                 <input
                                     type="number"
                                     required
+                                    min={0}
+                                    max={120}
                                     value={formData.edad}
-                                    onChange={(e) => setFormData({ ...formData, edad: parseInt(e.target.value) || 0 })}
+                                    onChange={handleEdadChange}
                                     className={`w-full rounded-xl px-3.5 py-2.5 text-sm font-mono border focus:outline-none focus:border-blue-500 ${inputBg}`}
                                 />
                             </div>
 
+                            {/* Tipo de Sangre */}
                             <div className="md:col-span-2">
                                 <label className={`block text-xs font-semibold mb-1 ${textColor}`}>
                                     Tipo de Sangre <span className={`font-normal ${subTextColor}`}>(Opcional)</span>
