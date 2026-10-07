@@ -1,17 +1,14 @@
-/* eslint-disable no-unused-vars */
 import { useState } from 'react'
 import API from '../services/api'
-import { hospitalSchema } from '../schemas/hospital.schema'
 import { Plus, Edit2, Power, AlertCircle, Building2, X } from 'lucide-react'
 
-export function GestionHospitales({ hospitales = [], onUpdate }) {
+export function GestionHospitales({ hospitales = [], onUpdate, darkMode = true }) {
     const [modal, setModal] = useState(false)
     const [editId, setEditId] = useState(null)
     const [errores, setErrores] = useState([])
 
     const formInicial = {
         nombre: '',
-        nivel: 'Nivel III',
         direccion: '',
         latitud: 10.2469,
         longitud: -67.5958,
@@ -24,11 +21,36 @@ export function GestionHospitales({ hospitales = [], onUpdate }) {
 
     const [form, setForm] = useState(formInicial)
 
+    // Semáforo dinámico de estado hospitalario
+    const getBadgeEstado = (estado) => {
+        switch (estado) {
+            case 'DISPONIBLE':
+                return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+            case 'SATURADO':
+                return 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+            case 'COLAPSADO':
+                return 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+            case 'INACTIVO':
+            default:
+                return 'bg-slate-500/10 text-slate-500 border-slate-500/30'
+        }
+    }
+
     const abrirModal = (h = null) => {
         setErrores([])
         if (h) {
             setEditId(h.id)
-            setForm(h)
+            setForm({
+                nombre: h.nombre || '',
+                direccion: h.direccion || '',
+                latitud: h.latitud || 10.2469,
+                longitud: h.longitud || -67.5958,
+                camas_uci_totales: h.camas_uci_totales || 0,
+                camas_uci_libres: h.camas_uci_libres || 0,
+                camas_urgencia_totales: h.camas_urgencia_totales || 0,
+                camas_urgencia_libres: h.camas_urgencia_libres || 0,
+                estado_operativo: h.estado_operativo || 'DISPONIBLE'
+            })
         } else {
             setEditId(null)
             setForm(formInicial)
@@ -40,24 +62,16 @@ export function GestionHospitales({ hospitales = [], onUpdate }) {
         e.preventDefault()
         setErrores([])
 
-        const resultado = hospitalSchema ? hospitalSchema.safeParse(form) : { success: true, data: form }
-
-        if (!resultado.success) {
-            const listaErrores = resultado.error.errors.map((err) => err.message)
-            setErrores(listaErrores)
-            return
-        }
-
         try {
             if (editId) {
-                await API.put(`/hospitales/${editId}`, resultado.data)
+                await API.put(`/hospitales/${editId}`, form)
             } else {
-                await API.post('/hospitales', resultado.data)
+                await API.post('/hospitales', form)
             }
             setModal(false)
             if (onUpdate) onUpdate()
         } catch (err) {
-            setErrores(['Ocurrió un error al guardar en el servidor'])
+            setErrores([err.response?.data?.error || 'Ocurrió un error al guardar en el servidor'])
         }
     }
 
@@ -67,15 +81,21 @@ export function GestionHospitales({ hospitales = [], onUpdate }) {
         if (onUpdate) onUpdate()
     }
 
+    const cardBg = darkMode ? 'bg-slate-900/90 border-slate-800/80' : 'bg-white border-slate-200 shadow-xl'
+    const textColor = darkMode ? 'text-white' : 'text-slate-900'
+    const subTextColor = darkMode ? 'text-slate-400' : 'text-slate-600'
+    const tableHeaderBg = darkMode ? 'bg-slate-800/50 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'
+    const inputBg = darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+            <div className={`flex items-center justify-between pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
                 <div>
-                    <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                        <Building2 className="w-5 h-5 text-blue-400" />
+                    <h2 className={`text-xl font-extrabold flex items-center gap-2 ${textColor}`}>
+                        <Building2 className="w-5 h-5 text-blue-500" />
                         Gestión de Centros Hospitalarios
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Mantenimiento de disponibilidad y estatus operativo</p>
+                    <p className={`text-xs mt-0.5 ${subTextColor}`}>Parametrización y control de disponibilidad de la red</p>
                 </div>
                 <button
                     onClick={() => abrirModal()}
@@ -85,32 +105,29 @@ export function GestionHospitales({ hospitales = [], onUpdate }) {
                 </button>
             </div>
 
-            <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
+            <div className={`${cardBg} border rounded-2xl overflow-hidden shadow-xl`}>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs sm:text-sm text-slate-300">
-                        <thead className="bg-slate-800/50 uppercase text-[11px] font-semibold text-slate-400 border-b border-slate-800">
+                    <table className={`w-full text-left text-xs sm:text-sm ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                        <thead className={`uppercase text-[11px] font-semibold ${tableHeaderBg}`}>
                             <tr>
                                 <th className="p-3.5">Nombre</th>
-                                <th className="p-3.5">Nivel</th>
+                                <th className="p-3.5">Dirección</th>
                                 <th className="p-3.5">UCI (Libres/Tot)</th>
                                 <th className="p-3.5">Urgencia (Libres/Tot)</th>
                                 <th className="p-3.5">Estado</th>
                                 <th className="p-3.5 text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60">
+                        <tbody className={`divide-y ${darkMode ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
                             {hospitales.map((h) => (
-                                <tr key={h.id} className="hover:bg-slate-800/30 transition-colors">
-                                    <td className="p-3.5 font-semibold text-white">{h.nombre}</td>
-                                    <td className="p-3.5">{h.nivel}</td>
+                                <tr key={h.id} className={darkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}>
+                                    <td className={`p-3.5 font-semibold ${textColor}`}>{h.nombre}</td>
+                                    <td className={`p-3.5 ${subTextColor}`}>{h.direccion}</td>
                                     <td className="p-3.5 font-mono">{h.camas_uci_libres} / {h.camas_uci_totales}</td>
                                     <td className="p-3.5 font-mono">{h.camas_urgencia_libres} / {h.camas_urgencia_totales}</td>
                                     <td className="p-3.5">
                                         <span
-                                            className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${h.estado_operativo === 'INACTIVO'
-                                                    ? 'bg-slate-800 text-slate-400 border-slate-700'
-                                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                                                }`}
+                                            className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase ${getBadgeEstado(h.estado_operativo)}`}
                                         >
                                             {h.estado_operativo}
                                         </span>
@@ -118,16 +135,17 @@ export function GestionHospitales({ hospitales = [], onUpdate }) {
                                     <td className="p-3.5 text-right space-x-1.5">
                                         <button
                                             onClick={() => abrirModal(h)}
-                                            className="p-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors cursor-pointer"
-                                            title="Editar"
+                                            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                                                }`}
+                                            title="Editar Hospital"
                                         >
                                             <Edit2 className="w-3.5 h-3.5" />
                                         </button>
                                         <button
                                             onClick={() => toggleInactivar(h)}
                                             className={`p-1.5 rounded-lg transition-colors cursor-pointer ${h.estado_operativo === 'INACTIVO'
-                                                    ? 'bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 border border-emerald-500/30'
-                                                    : 'bg-rose-950/80 hover:bg-rose-900 text-rose-400 border border-rose-500/30'
+                                                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 border border-emerald-500/30'
+                                                    : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 border border-rose-500/30'
                                                 }`}
                                             title={h.estado_operativo === 'INACTIVO' ? 'Activar' : 'Inactivar'}
                                         >
@@ -141,18 +159,23 @@ export function GestionHospitales({ hospitales = [], onUpdate }) {
                 </div>
             </div>
 
+            {/* Modal Agregar / Editar Hospital Completo */}
             {modal && (
                 <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl max-w-xl w-full space-y-4 shadow-2xl">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                            <h3 className="text-lg font-bold text-white">{editId ? 'Editar Hospital' : 'Nuevo Hospital'}</h3>
-                            <button onClick={() => setModal(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">
+                    <div className={`${cardBg} border p-6 rounded-2xl max-w-xl w-full space-y-4 shadow-2xl`}>
+                        <div className={`flex items-center justify-between border-b pb-3 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                            <h3 className={`text-lg font-bold ${textColor}`}>{editId ? 'Editar Hospital' : 'Registrar Nuevo Hospital'}</h3>
+                            <button
+                                onClick={() => setModal(false)}
+                                className={`p-1 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                                    }`}
+                            >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {errores.length > 0 && (
-                            <div className="bg-rose-950/80 border border-rose-500/50 p-3 rounded-xl text-rose-200 text-xs space-y-1">
+                            <div className="bg-rose-950/60 border border-rose-500/40 p-3 rounded-xl text-rose-200 text-xs space-y-1">
                                 {errores.map((e, idx) => (
                                     <div key={idx} className="flex items-center gap-1.5">
                                         <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" /> {e}
@@ -163,126 +186,117 @@ export function GestionHospitales({ hospitales = [], onUpdate }) {
 
                         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3 text-xs">
                             <div className="col-span-2">
-                                <label className="text-slate-300 block mb-1 font-semibold">Nombre</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Nombre del Hospital</label>
                                 <input
                                     type="text"
+                                    required
                                     value={form.nombre}
                                     onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 ${inputBg}`}
+                                    placeholder="Hospital Central"
                                 />
                             </div>
 
-                            <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Nivel</label>
-                                <select
-                                    value={form.nivel}
-                                    onChange={(e) => setForm({ ...form, nivel: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500"
-                                >
-                                    <option>Nivel I</option>
-                                    <option>Nivel II</option>
-                                    <option>Nivel III</option>
-                                    <option>Nivel IV</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Estado</label>
+                            <div className="col-span-2">
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Estado Operativo</label>
                                 <select
                                     value={form.estado_operativo}
                                     onChange={(e) => setForm({ ...form, estado_operativo: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 ${inputBg}`}
                                 >
-                                    <option>DISPONIBLE</option>
-                                    <option>SATURADO</option>
-                                    <option>COLAPSADO</option>
-                                    <option>INACTIVO</option>
+                                    <option value="DISPONIBLE">DISPONIBLE (Verde)</option>
+                                    <option value="SATURADO">SATURADO (Amarillo)</option>
+                                    <option value="COLAPSADO">COLAPSADO (Rojo)</option>
+                                    <option value="INACTIVO">INACTIVO (Gris)</option>
                                 </select>
                             </div>
 
                             <div className="col-span-2">
-                                <label className="text-slate-300 block mb-1 font-semibold">Dirección</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Dirección</label>
                                 <input
                                     type="text"
+                                    required
                                     value={form.direccion}
                                     onChange={(e) => setForm({ ...form, direccion: e.target.value })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 ${inputBg}`}
+                                    placeholder="Av. Principal, Sector Centro"
                                 />
                             </div>
 
                             <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Latitud</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Latitud</label>
                                 <input
                                     type="number"
                                     step="any"
                                     value={form.latitud}
                                     onChange={(e) => setForm({ ...form, latitud: parseFloat(e.target.value) || 0 })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500 font-mono"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
                                 />
                             </div>
 
                             <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Longitud</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Longitud</label>
                                 <input
                                     type="number"
                                     step="any"
                                     value={form.longitud}
                                     onChange={(e) => setForm({ ...form, longitud: parseFloat(e.target.value) || 0 })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500 font-mono"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
                                 />
                             </div>
 
                             <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Camas UCI Totales</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Camas UCI Totales</label>
                                 <input
                                     type="number"
                                     value={form.camas_uci_totales}
                                     onChange={(e) => setForm({ ...form, camas_uci_totales: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500 font-mono"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
                                 />
                             </div>
 
                             <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Camas UCI Libres</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Camas UCI Libres</label>
                                 <input
                                     type="number"
                                     value={form.camas_uci_libres}
                                     onChange={(e) => setForm({ ...form, camas_uci_libres: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500 font-mono"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
                                 />
                             </div>
 
                             <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Urgencias Totales</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Urgencias Totales</label>
                                 <input
                                     type="number"
                                     value={form.camas_urgencia_totales}
                                     onChange={(e) => setForm({ ...form, camas_urgencia_totales: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500 font-mono"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
                                 />
                             </div>
 
                             <div>
-                                <label className="text-slate-300 block mb-1 font-semibold">Urgencias Libres</label>
+                                <label className={`block mb-1 font-semibold ${textColor}`}>Urgencias Libres</label>
                                 <input
                                     type="number"
                                     value={form.camas_urgencia_libres}
                                     onChange={(e) => setForm({ ...form, camas_urgencia_libres: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-slate-800 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-blue-500 font-mono"
+                                    className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
                                 />
                             </div>
 
-                            <div className="col-span-2 flex justify-end gap-2 mt-4">
+                            <div className={`col-span-2 flex justify-end gap-2.5 mt-4 pt-3 border-t ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
                                 <button
                                     type="button"
                                     onClick={() => setModal(false)}
-                                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-slate-300 font-semibold cursor-pointer"
+                                    className={`px-4 py-2 rounded-xl font-semibold cursor-pointer ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                                        }`}
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-bold cursor-pointer shadow-lg shadow-blue-600/30"
+                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-white font-bold cursor-pointer shadow-lg shadow-blue-600/30 transition-all active:scale-95"
                                 >
                                     Guardar
                                 </button>

@@ -2,11 +2,13 @@ import { useState } from 'react'
 import API from '../services/api'
 import { AlertCircle, CheckCircle2, Ambulance, Clock, MapPin, Building2, User, FileText, Zap } from 'lucide-react'
 
-export function FormularioTriage({ onDerivacionExitosa }) {
+export function FormularioTriage({ onDerivacionExitosa, darkMode = true }) {
     const [formData, setFormData] = useState({
+        nacionalidad: 'V',
         cedula: '',
         nombre: '',
         edad: 30,
+        tipo_sangre: '',
         triage: 'ROJO',
         sintomas: '',
         requiere_uci: false,
@@ -19,14 +21,30 @@ export function FormularioTriage({ onDerivacionExitosa }) {
     const [resultado, setResultado] = useState(null)
     const [error, setError] = useState(null)
 
+    // Solo números y máximo 8 dígitos
+    const handleCedulaChange = (e) => {
+        const num = e.target.value.replace(/\D/g, '').slice(0, 8)
+        setFormData({ ...formData, cedula: num })
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault()
+        if (formData.cedula.length < 5) {
+            setError('La cédula debe contener al menos 5 dígitos.')
+            return
+        }
+
         setCargando(true)
         setError(null)
         setResultado(null)
 
+        const payload = {
+            ...formData,
+            cedula_completa: `${formData.nacionalidad}-${formData.cedula}`
+        }
+
         try {
-            const response = await API.post('/triage/evaluar', formData)
+            const response = await API.post('/triage/evaluar', payload)
             setResultado(response.data)
             if (onDerivacionExitosa) onDerivacionExitosa()
         } catch (err) {
@@ -39,90 +57,129 @@ export function FormularioTriage({ onDerivacionExitosa }) {
     const triageOptions = [
         {
             id: 'ROJO',
-            label: 'Rojo (Emergencia Vital)',
+            label: 'Alta (Emergencia Vital)',
             desc: 'Riesgo inminente de vida',
-            activeColor: 'bg-rose-500/15 border-rose-500 text-rose-400 ring-2 ring-rose-500/30',
-            idleColor: 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-rose-500/50'
+            activeColor: 'bg-rose-500/15 border-rose-500 text-rose-500 ring-2 ring-rose-500/30',
+            idleColor: darkMode ? 'bg-slate-800/40 border-slate-700/60 text-slate-400' : 'bg-slate-100 border-slate-300 text-slate-600'
         },
         {
             id: 'AMARILLO',
-            label: 'Amarillo (Urgente)',
+            label: 'Media (Urgente)',
             desc: 'Atención prioritaria requerida',
-            activeColor: 'bg-amber-500/15 border-amber-500 text-amber-400 ring-2 ring-amber-500/30',
-            idleColor: 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-amber-500/50'
+            activeColor: 'bg-amber-500/15 border-amber-500 text-amber-500 ring-2 ring-amber-500/30',
+            idleColor: darkMode ? 'bg-slate-800/40 border-slate-700/60 text-slate-400' : 'bg-slate-100 border-slate-300 text-slate-600'
         },
         {
             id: 'VERDE',
-            label: 'Verde (Leve)',
+            label: 'Baja (Leve)',
             desc: 'Atención estándar o ambulatoria',
-            activeColor: 'bg-emerald-500/15 border-emerald-500 text-emerald-400 ring-2 ring-emerald-500/30',
-            idleColor: 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:border-emerald-500/50'
+            activeColor: 'bg-emerald-500/15 border-emerald-500 text-emerald-500 ring-2 ring-emerald-500/30',
+            idleColor: darkMode ? 'bg-slate-800/40 border-slate-700/60 text-slate-400' : 'bg-slate-100 border-slate-300 text-slate-600'
         },
     ]
 
+    const cardBg = darkMode ? 'bg-slate-900/90 border-slate-800/80' : 'bg-white border-slate-200 shadow-xl'
+    const textColor = darkMode ? 'text-white' : 'text-slate-900'
+    const subTextColor = darkMode ? 'text-slate-400' : 'text-slate-600'
+    const inputBg = darkMode ? 'bg-slate-800/80 border-slate-700/80 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'
+
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-            <div className="bg-slate-900/90 border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-800/60">
+            <div className={`${cardBg} border rounded-2xl p-6 sm:p-8 shadow-xl`}>
+                <div className={`flex items-center gap-3 mb-6 pb-4 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
                     <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500">
                         <Ambulance className="w-6 h-6" />
                     </div>
                     <div>
-                        <h2 className="text-xl font-extrabold text-white">Ingreso y Evaluación de Emergencia</h2>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                            Cálculo óptimo por algoritmo Haversine + modelo M/M/c de colas de urgencia
+                        <h2 className={`text-xl font-extrabold ${textColor}`}>Ingreso y Evaluación de Emergencia</h2>
+                        <p className={`text-xs mt-0.5 ${subTextColor}`}>
+                            Cálculo óptimo por algoritmo de asignación hospitalaria en tiempo real
                         </p>
                     </div>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Sección Paciente */}
+                    {/* Datos del Paciente */}
                     <div className="space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-blue-400" /> Datos del Paciente
+                        <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${subTextColor}`}>
+                            <User className="w-3.5 h-3.5 text-blue-500" /> Datos del Paciente
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-300 mb-1">Cédula / Documento</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.cedula}
-                                    onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
-                                    className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
-                                    placeholder="V-28123456"
-                                />
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {/* Cédula V / E y Número */}
+                            <div className="md:col-span-2">
+                                <label className={`block text-xs font-semibold mb-1 ${textColor}`}>Cédula / Documento</label>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={formData.nacionalidad}
+                                        onChange={(e) => setFormData({ ...formData, nacionalidad: e.target.value })}
+                                        className={`rounded-xl px-3 py-2.5 text-sm font-bold border focus:outline-none focus:border-blue-500 ${inputBg}`}
+                                    >
+                                        <option value="V">V-</option>
+                                        <option value="E">E-</option>
+                                    </select>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={formData.cedula}
+                                        onChange={handleCedulaChange}
+                                        maxLength={8}
+                                        className={`w-full rounded-xl px-3.5 py-2.5 text-sm font-mono border focus:outline-none focus:border-blue-500 ${inputBg}`}
+                                        placeholder="28123456"
+                                    />
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-300 mb-1">Nombre Completo</label>
+                                <label className={`block text-xs font-semibold mb-1 ${textColor}`}>Nombre Completo</label>
                                 <input
                                     type="text"
                                     required
                                     value={formData.nombre}
                                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                                    className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    className={`w-full rounded-xl px-3.5 py-2.5 text-sm border focus:outline-none focus:border-blue-500 ${inputBg}`}
                                     placeholder="Juan Pérez"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-slate-300 mb-1">Edad</label>
+                                <label className={`block text-xs font-semibold mb-1 ${textColor}`}>Edad</label>
                                 <input
                                     type="number"
                                     required
                                     value={formData.edad}
                                     onChange={(e) => setFormData({ ...formData, edad: parseInt(e.target.value) || 0 })}
-                                    className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500 font-mono"
+                                    className={`w-full rounded-xl px-3.5 py-2.5 text-sm font-mono border focus:outline-none focus:border-blue-500 ${inputBg}`}
                                 />
+                            </div>
+
+                            {/* Tipo de Sangre Opcional */}
+                            <div className="md:col-span-2">
+                                <label className={`block text-xs font-semibold mb-1 ${textColor}`}>
+                                    Tipo de Sangre <span className={`font-normal ${subTextColor}`}>(Opcional)</span>
+                                </label>
+                                <select
+                                    value={formData.tipo_sangre}
+                                    onChange={(e) => setFormData({ ...formData, tipo_sangre: e.target.value })}
+                                    className={`w-full rounded-xl px-3.5 py-2.5 text-sm border focus:outline-none focus:border-blue-500 ${inputBg}`}
+                                >
+                                    <option value="">Desconocido / No especificado</option>
+                                    <option value="O+">O Rh Positivo (O+)</option>
+                                    <option value="O-">O Rh Negativo (O-)</option>
+                                    <option value="A+">A Rh Positivo (A+)</option>
+                                    <option value="A-">A Rh Negativo (A-)</option>
+                                    <option value="B+">B Rh Positivo (B+)</option>
+                                    <option value="B-">B Rh Negativo (B-)</option>
+                                    <option value="AB+">AB Rh Positivo (AB+)</option>
+                                    <option value="AB-">AB Rh Negativo (AB-)</option>
+                                </select>
                             </div>
                         </div>
                     </div>
 
-                    {/* Sección Triage */}
+                    {/* Clasificación de Gravedad (Triaje) */}
                     <div className="space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                            <Zap className="w-3.5 h-3.5 text-amber-400" /> Clasificación de Gravedad (Triaje)
+                        <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${subTextColor}`}>
+                            <Zap className="w-3.5 h-3.5 text-amber-500" /> Clasificación de Gravedad (Triaje)
                         </h3>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             {triageOptions.map((item) => {
@@ -143,45 +200,48 @@ export function FormularioTriage({ onDerivacionExitosa }) {
                         </div>
                     </div>
 
-                    {/* Requerimientos clínicos */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-800/40 p-4 rounded-xl border border-slate-700/50">
-                        <label className="flex items-center gap-3 cursor-pointer p-1 rounded-lg hover:bg-slate-800/50 transition-colors">
+                    {/* Requerimientos Clínicos (UCI / Quirófano) */}
+                    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl border ${darkMode ? 'bg-slate-800/40 border-slate-700/50' : 'bg-slate-50 border-slate-200'
+                        }`}>
+                        <label className={`flex items-center gap-3 cursor-pointer p-1 rounded-lg transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-100'
+                            }`}>
                             <input
                                 type="checkbox"
                                 checked={formData.requiere_uci}
                                 onChange={(e) => setFormData({ ...formData, requiere_uci: e.target.checked })}
-                                className="w-4 h-4 rounded accent-rose-600 bg-slate-800 border-slate-700 cursor-pointer"
+                                className="w-4 h-4 rounded accent-rose-600 cursor-pointer"
                             />
                             <div>
-                                <span className="text-xs font-bold text-white block">Requiere Cama UCI Vital</span>
-                                <span className="text-[11px] text-slate-400">Filtrará hospitales con UCI disponible</span>
+                                <span className={`text-xs font-bold block ${textColor}`}>Requiere Cama UCI Vital</span>
+                                <span className={`text-[11px] ${subTextColor}`}>Filtrará hospitales con camas UCI disponibles</span>
                             </div>
                         </label>
 
-                        <label className="flex items-center gap-3 cursor-pointer p-1 rounded-lg hover:bg-slate-800/50 transition-colors">
+                        <label className={`flex items-center gap-3 cursor-pointer p-1 rounded-lg transition-colors ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-100'
+                            }`}>
                             <input
                                 type="checkbox"
                                 checked={formData.requiere_quirofano}
                                 onChange={(e) => setFormData({ ...formData, requiere_quirofano: e.target.checked })}
-                                className="w-4 h-4 rounded accent-amber-600 bg-slate-800 border-slate-700 cursor-pointer"
+                                className="w-4 h-4 rounded accent-amber-600 cursor-pointer"
                             />
                             <div>
-                                <span className="text-xs font-bold text-white block">Requiere Quirófano Inmediato</span>
-                                <span className="text-[11px] text-slate-400">Prioridad para intervención quirúrgica</span>
+                                <span className={`text-xs font-bold block ${textColor}`}>Requiere Quirófano Inmediato</span>
+                                <span className={`text-[11px] ${subTextColor}`}>Prioridad para intervención quirúrgica</span>
                             </div>
                         </label>
                     </div>
 
                     {/* Síntomas */}
                     <div>
-                        <label className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-1.5">
-                            <FileText className="w-3.5 h-3.5 text-emerald-400" /> Síntomas / Diagnóstico Preliminar
+                        <label className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-1.5 ${subTextColor}`}>
+                            <FileText className="w-3.5 h-3.5 text-emerald-500" /> Síntomas / Diagnóstico Preliminar
                         </label>
                         <textarea
                             rows={3}
                             value={formData.sintomas}
                             onChange={(e) => setFormData({ ...formData, sintomas: e.target.value })}
-                            className="w-full bg-slate-800/80 border border-slate-700/80 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500"
+                            className={`w-full rounded-xl p-3 text-sm border focus:outline-none focus:border-blue-500 ${inputBg}`}
                             placeholder="Ej: Politraumatismo severo, dolor torácico, dificultad respiratoria..."
                         />
                     </div>
@@ -191,14 +251,7 @@ export function FormularioTriage({ onDerivacionExitosa }) {
                         disabled={cargando}
                         className="w-full bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold py-3.5 px-6 rounded-xl shadow-lg shadow-rose-600/25 transition-all duration-200 active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
                     >
-                        {cargando ? (
-                            <span className="inline-flex items-center gap-2">
-                                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                Evaluando Red y Tiempo de Espera...
-                            </span>
-                        ) : (
-                            'Calcular Hospital Óptimo y Derivar'
-                        )}
+                        {cargando ? 'Evaluando Red y Tiempo de Espera...' : 'Calcular el hospital más óptimo'}
                     </button>
                 </form>
             </div>
@@ -211,55 +264,50 @@ export function FormularioTriage({ onDerivacionExitosa }) {
             )}
 
             {resultado && (
-                <div className="bg-slate-900/90 border border-emerald-500/40 rounded-2xl p-6 space-y-4 shadow-2xl">
-                    <div className="flex items-center gap-2 text-emerald-400 font-bold text-base border-b border-slate-800 pb-3">
+                <div className={`${cardBg} border border-emerald-500/40 rounded-2xl p-6 space-y-4 shadow-2xl`}>
+                    <div className="flex items-center gap-2 text-emerald-500 font-bold text-base border-b border-slate-700/50 pb-3">
                         <CheckCircle2 className="w-5 h-5" />
-                        Asignación Óptima Recomendada por el Algoritmo
+                        Asignación Óptima Recomendada
                     </div>
 
-                    <div className="bg-slate-800/60 rounded-xl p-5 border border-slate-700/60 space-y-4">
+                    <div className={`rounded-xl p-5 border space-y-4 ${darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+                        }`}>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                             <div>
-                                <h3 className="text-xl font-extrabold text-white">
+                                <h3 className={`text-xl font-extrabold ${textColor}`}>
                                     {resultado.destinoRecomendado?.hospital?.nombre}
                                 </h3>
-                                <p className="text-xs text-slate-400 mt-1 flex items-center gap-1.5">
-                                    <Building2 className="w-4 h-4 text-slate-400" />
-                                    {resultado.destinoRecomendado?.hospital?.nivel} — {resultado.destinoRecomendado?.hospital?.direccion}
+                                <p className={`text-xs mt-1 flex items-center gap-1.5 ${subTextColor}`}>
+                                    <Building2 className="w-4 h-4" />
+                                    {resultado.destinoRecomendado?.hospital?.direccion}
                                 </p>
                             </div>
-
-                            {resultado.destinoRecomendado?.score && (
-                                <div className="self-start sm:self-auto bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold">
-                                    Score: {resultado.destinoRecomendado.score} pts
-                                </div>
-                            )}
                         </div>
 
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-center pt-2">
-                            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                                <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1 mb-1">
-                                    <MapPin className="w-3.5 h-3.5 text-blue-400" /> Distancia
+                            <div className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                <p className={`text-[11px] flex items-center justify-center gap-1 mb-1 ${subTextColor}`}>
+                                    <MapPin className="w-3.5 h-3.5 text-blue-500" /> Distancia
                                 </p>
-                                <p className="text-base font-extrabold text-white font-mono">
+                                <p className={`text-base font-extrabold font-mono ${textColor}`}>
                                     {resultado.destinoRecomendado?.distanciaKm} km
                                 </p>
                             </div>
 
-                            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                                <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1 mb-1">
-                                    <Ambulance className="w-3.5 h-3.5 text-amber-400" /> Traslado
+                            <div className={`p-3 rounded-xl border ${darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                <p className={`text-[11px] flex items-center justify-center gap-1 mb-1 ${subTextColor}`}>
+                                    <Ambulance className="w-3.5 h-3.5 text-amber-500" /> Traslado
                                 </p>
-                                <p className="text-base font-extrabold text-white font-mono">
+                                <p className={`text-base font-extrabold font-mono ${textColor}`}>
                                     {resultado.destinoRecomendado?.tiempoTrasladoMin} min
                                 </p>
                             </div>
 
-                            <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 col-span-2 sm:col-span-1">
-                                <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1 mb-1">
-                                    <Clock className="w-3.5 h-3.5 text-emerald-400" /> Cola Urgencias
+                            <div className={`p-3 rounded-xl border col-span-2 sm:col-span-1 ${darkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                <p className={`text-[11px] flex items-center justify-center gap-1 mb-1 ${subTextColor}`}>
+                                    <Clock className="w-3.5 h-3.5 text-emerald-500" /> Cola Urgencias
                                 </p>
-                                <p className="text-base font-extrabold text-white font-mono">
+                                <p className={`text-base font-extrabold font-mono ${textColor}`}>
                                     ~{resultado.destinoRecomendado?.tiempoEsperaMin} min
                                 </p>
                             </div>

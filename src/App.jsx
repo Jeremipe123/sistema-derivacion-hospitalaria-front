@@ -1,10 +1,10 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react'
 import API from './services/api'
 import { socket } from './services/socket'
 import { Navbar } from './components/Navbar'
 import { Dashboard } from './components/Dashboard'
 import { FormularioTriage } from './components/FormularioTriage'
+import { GestionHospitales } from './components/GestionHospitales'
 import { EstadisticasPanel } from './components/EstadisticasPanel'
 
 export default function App() {
@@ -12,6 +12,16 @@ export default function App() {
   const [conectado, setConectado] = useState(false)
   const [hospitales, setHospitales] = useState([])
   const [traslados, setTraslados] = useState([])
+
+  // Estado del tema persistente en localStorage
+  const [darkMode, setDarkMode] = useState(() => {
+    const temaGuardado = localStorage.getItem('theme')
+    return temaGuardado ? temaGuardado === 'dark' : true
+  })
+
+  useEffect(() => {
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
 
   const cargarDatos = async () => {
     try {
@@ -28,7 +38,6 @@ export default function App() {
 
   useEffect(() => {
     cargarDatos()
-
     socket.on('connect', () => setConectado(true))
     socket.on('disconnect', () => setConectado(false))
 
@@ -51,21 +60,41 @@ export default function App() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white">
-      <Navbar vistaActual={vistaActual} setVistaActual={setVistaActual} conectado={conectado} />
+    <div className={`min-h-screen transition-colors duration-300 font-sans ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'
+      }`}>
+      <Navbar
+        vistaActual={vistaActual}
+        setVistaActual={setVistaActual}
+        conectado={conectado}
+        darkMode={darkMode}
+        setDarkMode={setDarkMode}
+      />
 
       <main className="flex-1 pb-12">
         {vistaActual === 'dashboard' && (
-          <Dashboard hospitales={hospitales} traslados={traslados} onUpdate={cargarDatos} />
+          <Dashboard
+            hospitales={hospitales}
+            traslados={traslados}
+            onUpdate={cargarDatos}
+            darkMode={darkMode}
+          />
         )}
         {vistaActual === 'triage' && (
           <FormularioTriage
-            onDerivacionExitosa={() => {
-              cargarDatos()
-            }}
+            onDerivacionExitosa={cargarDatos}
+            darkMode={darkMode}
           />
         )}
-        {vistaActual === 'estadisticas' && <EstadisticasPanel />}
+        {vistaActual === 'gestion_hospitales' && (
+          <GestionHospitales
+            hospitales={hospitales}
+            onUpdate={cargarDatos}
+            darkMode={darkMode}
+          />
+        )}
+        {vistaActual === 'estadisticas' && (
+          <EstadisticasPanel darkMode={darkMode} />
+        )}
       </main>
     </div>
   )

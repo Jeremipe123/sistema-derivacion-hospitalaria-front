@@ -4,7 +4,7 @@ import { socket } from '../services/socket'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts'
 import { Activity, Clock, ShieldAlert, CheckCircle, Inbox, UserCheck, TrendingUp } from 'lucide-react'
 
-export function EstadisticasPanel() {
+export function EstadisticasPanel({ darkMode = true }) {
     const [stats, setStats] = useState(null)
     const [cargando, setCargando] = useState(true)
 
@@ -27,9 +27,13 @@ export function EstadisticasPanel() {
         }
     }, [cargarEstadisticas])
 
+    const cardBg = darkMode ? 'bg-slate-900/90 border-slate-800/80' : 'bg-white border-slate-200 shadow-xl'
+    const textColor = darkMode ? 'text-white' : 'text-slate-900'
+    const subTextColor = darkMode ? 'text-slate-400' : 'text-slate-600'
+
     if (cargando) {
         return (
-            <div className="max-w-7xl mx-auto p-12 text-center text-slate-400 flex items-center justify-center gap-2">
+            <div className={`max-w-7xl mx-auto p-12 text-center flex items-center justify-center gap-2 ${subTextColor}`}>
                 <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                 <span className="text-sm font-medium">Cargando métricas de la red...</span>
             </div>
@@ -38,10 +42,10 @@ export function EstadisticasPanel() {
 
     if (!stats || stats.sinRegistros) {
         return (
-            <div className="max-w-md mx-auto my-12 p-8 bg-slate-900 border border-slate-800 rounded-2xl text-center space-y-3 shadow-xl">
-                <Inbox className="w-12 h-12 text-slate-500 mx-auto" />
-                <h3 className="text-lg font-bold text-white">Aún no existen registros</h3>
-                <p className="text-xs text-slate-400 leading-relaxed">
+            <div className={`max-w-md mx-auto my-12 p-8 border rounded-2xl text-center space-y-3 ${cardBg}`}>
+                <Inbox className="w-12 h-12 text-slate-400 mx-auto" />
+                <h3 className={`text-lg font-bold ${textColor}`}>Aún no existen registros</h3>
+                <p className={`text-xs ${subTextColor}`}>
                     Registra hospitales y realiza triajes para generar métricas estadísticas en tiempo real.
                 </p>
             </div>
@@ -49,86 +53,95 @@ export function EstadisticasPanel() {
     }
 
     const dataTriage = [
-        { name: 'Triaje Rojo', valor: stats.distribucionTriage?.rojo || 0, color: '#f43f5e' },
-        { name: 'Triaje Amarillo', valor: stats.distribucionTriage?.amarillo || 0, color: '#f59e0b' },
-        { name: 'Triaje Verde', valor: stats.distribucionTriage?.verde || 0, color: '#10b981' },
+        { name: 'Alta (Crítico)', valor: stats.distribucionTriage?.rojo || 0, color: '#f43f5e' },
+        { name: 'Media (Urgente)', valor: stats.distribucionTriage?.amarillo || 0, color: '#f59e0b' },
+        { name: 'Baja (Leve)', valor: stats.distribucionTriage?.verde || 0, color: '#10b981' },
     ]
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+            <div className={`flex items-center justify-between pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
                 <div>
-                    <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-indigo-400" />
+                    <h2 className={`text-xl font-extrabold flex items-center gap-2 ${textColor}`}>
+                        <TrendingUp className="w-5 h-5 text-indigo-500" />
                         Métricas de Efectividad de la Red
                     </h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Indicadores de rendimiento operacional y distribución de carga</p>
+                    <p className={`text-xs mt-0.5 ${subTextColor}`}>Indicadores de rendimiento operacional y distribución de carga</p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-lg space-y-2">
-                    <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                        <Activity className="w-4 h-4 text-blue-400" /> Pacientes del Mes
+                <div className={`${cardBg} border p-5 rounded-2xl shadow-lg space-y-2`}>
+                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${subTextColor}`}>
+                        <Activity className="w-4 h-4 text-blue-500" /> Pacientes del Mes
                     </p>
-                    <p className="text-3xl font-extrabold text-white font-mono">
+                    <p className={`text-3xl font-extrabold font-mono ${textColor}`}>
                         {stats.resumenGeneral?.totalPacientesEsteMes || 0}
                     </p>
                 </div>
 
-                <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-lg space-y-2">
-                    <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                        <UserCheck className="w-4 h-4 text-emerald-400" /> Atendidos
+                <div className={`${cardBg} border p-5 rounded-2xl shadow-lg space-y-2`}>
+                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${subTextColor}`}>
+                        <UserCheck className="w-4 h-4 text-emerald-500" /> Atendidos
                     </p>
-                    <p className="text-3xl font-extrabold text-emerald-400 font-mono">
+                    <p className="text-3xl font-extrabold text-emerald-500 font-mono">
                         {stats.estadosPacientes?.atendidos || 0}
                     </p>
                 </div>
 
-                <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-lg space-y-2">
-                    <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-amber-400" /> Tiempo Traslado
+                <div className={`${cardBg} border p-5 rounded-2xl shadow-lg space-y-2`}>
+                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${subTextColor}`}>
+                        <Clock className="w-4 h-4 text-amber-500" /> Tiempo Traslado
                     </p>
-                    <p className="text-3xl font-extrabold text-white font-mono">
+                    <p className={`text-3xl font-extrabold font-mono ${textColor}`}>
                         {stats.eficienciaSistema?.tiempoPromedioTrasladoMin || 0}{' '}
-                        <span className="text-xs font-normal text-slate-400">min</span>
+                        <span className={`text-xs font-normal ${subTextColor}`}>min</span>
                     </p>
                 </div>
 
-                <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-lg space-y-2">
-                    <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                        <ShieldAlert className="w-4 h-4 text-rose-400" /> Ocupación UCI
+                <div className={`${cardBg} border p-5 rounded-2xl shadow-lg space-y-2`}>
+                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${subTextColor}`}>
+                        <ShieldAlert className="w-4 h-4 text-rose-500" /> Ocupación UCI
                     </p>
-                    <p className="text-3xl font-extrabold text-rose-400 font-mono">
+                    <p className="text-3xl font-extrabold text-rose-500 font-mono">
                         {stats.capacidadRed?.uci?.porcentajeOcupacion || 0}%
                     </p>
                 </div>
 
-                <div className="bg-slate-900/90 border border-slate-800/80 p-5 rounded-2xl shadow-lg space-y-2">
-                    <p className="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                        <CheckCircle className="w-4 h-4 text-emerald-400" /> Efectividad
+                <div className={`${cardBg} border p-5 rounded-2xl shadow-lg space-y-2`}>
+                    <p className={`text-xs font-semibold flex items-center gap-1.5 ${subTextColor}`}>
+                        <CheckCircle className="w-4 h-4 text-emerald-500" /> Efectividad
                     </p>
-                    <p className="text-3xl font-extrabold text-emerald-400 font-mono">
+                    <p className="text-3xl font-extrabold text-emerald-500 font-mono">
                         {stats.resumenGeneral?.tasaEfectividad || 0}%
                     </p>
                 </div>
             </div>
 
-            <div className="bg-slate-900/90 border border-slate-800/80 p-6 rounded-2xl shadow-xl space-y-4">
-                <h3 className="text-base font-bold text-white">Distribución por Severidad de Triaje</h3>
+            <div className={`${cardBg} border p-6 rounded-2xl shadow-xl space-y-4`}>
+                <h3 className={`text-base font-bold ${textColor}`}>Distribución de Pacientes por Severidad</h3>
                 <div className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={dataTriage} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.3} />
-                            <XAxis dataKey="name" stroke="#94a3b8" tickLine={false} fontSize={12} />
-                            <YAxis stroke="#94a3b8" tickLine={false} fontSize={12} />
+                            <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#334155' : '#e2e8f0'} opacity={0.5} />
+                            <XAxis dataKey="name" stroke={darkMode ? '#94a3b8' : '#64748b'} tickLine={false} fontSize={12} />
+
+                            {/* Escala exclusivamente de números enteros */}
+                            <YAxis
+                                stroke={darkMode ? '#94a3b8' : '#64748b'}
+                                tickLine={false}
+                                fontSize={12}
+                                allowDecimals={false}
+                                domain={[0, 'auto']}
+                            />
+
                             <Tooltip
                                 contentStyle={{
-                                    backgroundColor: '#0f172a',
-                                    borderColor: '#334155',
+                                    backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+                                    borderColor: darkMode ? '#334155' : '#cbd5e1',
                                     borderRadius: '0.75rem',
-                                    color: '#fff',
-                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.5)'
+                                    color: darkMode ? '#ffffff' : '#0f172a',
+                                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                                 }}
                             />
                             <Bar dataKey="valor" radius={[8, 8, 0, 0]}>
