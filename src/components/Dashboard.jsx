@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import API from '../services/api'
 import {
     Building2,
@@ -8,13 +8,37 @@ import {
     CheckCircle2,
     Edit2,
     AlertCircle,
-    X
+    X,
+    Search,
+    Clock,
+    UserCheck
 } from 'lucide-react'
 
-export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode = true }) {
+export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode = true, usuario = null }) {
     const [modalOperativo, setModalOperativo] = useState(false)
     const [hospitalEdit, setHospitalEdit] = useState(null)
     const [errores, setErrores] = useState([])
+
+    // Estado para la fecha y hora en vivo
+    const [fechaHoraActual, setFechaHoraActual] = useState(new Date())
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setFechaHoraActual(new Date())
+        }, 1000)
+        return () => clearInterval(timer)
+    }, [])
+
+    // Obtener nombre y apellido del usuario (desde props o localStorage de respaldo)
+    const usuarioStorage = JSON.parse(localStorage.getItem('usuario') || '{}')
+    const nombreUsuario = usuario?.nombre || usuarioStorage.nombre || 'Operador'
+    const apellidoUsuario = usuario?.apellido || usuarioStorage.apellido || ''
+
+    // Estados para la búsqueda con nacionalidad
+    const [nacionalidadBusqueda, setNacionalidadBusqueda] = useState('V')
+    const [cedulaBusqueda, setCedulaBusqueda] = useState('')
+    const [personaEncontrada, setPersonaEncontrada] = useState(null)
+    const [errorBusqueda, setErrorBusqueda] = useState('')
 
     // Ordenamiento por Semáforo para Hospitales
     const ORDEN_ESTADO = { 'DISPONIBLE': 1, 'SATURADO': 2, 'COLAPSADO': 3, 'INACTIVO': 4 }
@@ -33,33 +57,47 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
 
     const getBadgeEstadoHospital = (estado) => {
         switch (estado) {
-            case 'DISPONIBLE':
-                return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-            case 'SATURADO':
-                return 'bg-amber-500/10 text-amber-500 border-amber-500/30'
-            case 'COLAPSADO':
-                return 'bg-rose-500/10 text-rose-500 border-rose-500/30'
-            default:
-                return 'bg-slate-500/10 text-slate-400 border-slate-500/30'
+            case 'DISPONIBLE': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+            case 'SATURADO': return 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+            case 'COLAPSADO': return 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+            default: return 'bg-slate-500/10 text-slate-400 border-slate-500/30'
         }
     }
 
-    // Semáforo para el Estado del Paciente / Derivación
     const getBadgeEstadoPaciente = (estado) => {
         switch (estado) {
             case 'ATENDIDO':
-            case 'COMPLETADO':
-                return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
+            case 'COMPLETADO': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
             case 'EN_TRANSITO':
             case 'EN_CAMINO':
-            case 'DERIVADO':
-                return 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+            case 'DERIVADO': return 'bg-amber-500/10 text-amber-500 border-amber-500/30'
             case 'EN_TRIAGE':
             case 'ASIGNADO':
-            case 'PENDIENTE':
-                return 'bg-rose-500/10 text-rose-500 border-rose-500/30'
-            default:
-                return 'bg-slate-500/10 text-slate-400 border-slate-500/30'
+            case 'PENDIENTE': return 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+            default: return 'bg-slate-500/10 text-slate-400 border-slate-500/30'
+        }
+    }
+
+    const handleCedulaInput = (e) => {
+        const val = e.target.value.replace(/\D/g, '').slice(0, 8)
+        setCedulaBusqueda(val)
+    }
+
+    const handleBuscarPersona = async (e) => {
+        e.preventDefault()
+        if (!cedulaBusqueda.trim()) return
+
+        setErrorBusqueda('')
+        setPersonaEncontrada(null)
+
+        const documentoCompleto = `${nacionalidadBusqueda}-${cedulaBusqueda}`
+
+        try {
+            const res = await API.get(`/pacientes/buscar/${documentoCompleto}`)
+            setPersonaEncontrada(res.data)
+        } catch (err) {
+            setPersonaEncontrada(null)
+            setErrorBusqueda(err.response?.data?.error || 'Persona no encontrada en el sistema.')
         }
     }
 
@@ -97,7 +135,6 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
             await API.patch(`/pacientes/${pacienteId}/estado`, { estado: 'ATENDIDO' })
             if (onUpdate) onUpdate()
         } catch (error) {
-            console.error('Error al actualizar estado del paciente:', error)
             alert(error.response?.data?.error || 'No se pudo actualizar el estado del paciente')
         }
     }
@@ -108,12 +145,127 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
     const tableHeaderBg = darkMode ? 'bg-slate-800/50 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'
     const inputBg = darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'
 
+    // Formatear fecha actual estéticamente
+    const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
+    const fechaFormateada = fechaHoraActual.toLocaleDateString('es-ES', opcionesFecha)
+    const horaFormateada = fechaHoraActual.toLocaleTimeString('es-ES')
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8">
-            {/* Sección 1: Red Hospitalaria */}
+
+            {/* Recuadro de Bienvenida y Fecha/Hora en vivo */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Fecha y Hora en Vivo (Grande a la izquierda) */}
+                <div className={`${cardBg} border px-6 py-4 rounded-2xl shadow-xl flex items-center gap-4 shrink-0`}>
+                    <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                        <Clock className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div>
+                        <p className={`text-lg font-mono font-black tracking-wider ${textColor}`}>{horaFormateada}</p>
+                        <p className={`text-xs capitalize font-medium ${subTextColor}`}>{fechaFormateada}</p>
+                    </div>
+                </div>
+
+                {/* Bienvenida (Derecha) */}
+                <section className={`${cardBg} border rounded-2xl p-5 shadow-xl flex items-center gap-3.5 relative overflow-hidden flex-1`}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-rose-500/10 to-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-500 flex items-center justify-center text-white shadow-lg shadow-rose-600/30 shrink-0">
+                        <UserCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h2 className={`text-lg font-extrabold tracking-tight ${textColor}`}>
+                            ¡Bienvenido a RedTriage, <span className="text-rose-500 capitalize">{nombreUsuario} {apellidoUsuario}</span>!
+                        </h2>
+                        <p className={`text-xs mt-0.5 ${subTextColor}`}>
+                            Sistema Inteligente de Derivación Hospitalaria y Control Operativo en Vivo
+                        </p>
+                    </div>
+                </section>
+            </div>
+
+            {/* Recuadro Superior: Búsqueda Rápida por Cédula / Rescate */}
+            <section className={`${cardBg} border rounded-2xl p-5 shadow-lg space-y-4`}>
+                <h2 className={`text-sm font-bold flex items-center gap-2 ${textColor}`}>
+                    <Search className="w-4 h-4 text-rose-500" /> Búsqueda de persona por cédula
+                </h2>
+                <form onSubmit={handleBuscarPersona} className="flex gap-2">
+                    <select
+                        value={nacionalidadBusqueda}
+                        onChange={(e) => setNacionalidadBusqueda(e.target.value)}
+                        className={`rounded-xl px-3 py-2.5 text-xs font-bold border focus:outline-none focus:border-rose-500 cursor-pointer ${inputBg}`}
+                    >
+                        <option value="V">V-</option>
+                        <option value="E">E-</option>
+                    </select>
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        value={cedulaBusqueda}
+                        onChange={handleCedulaInput}
+                        maxLength={8}
+                        placeholder="28123456"
+                        className={`w-full p-2.5 text-xs rounded-xl border focus:outline-none focus:border-rose-500 font-mono ${inputBg}`}
+                    />
+                    <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold cursor-pointer shrink-0 transition-all active:scale-95">
+                        Buscar
+                    </button>
+                    {personaEncontrada && (
+                        <button
+                            type="button"
+                            onClick={() => { setPersonaEncontrada(null); setCedulaBusqueda(''); setErrorBusqueda('') }}
+                            className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer shrink-0 ${darkMode ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 border-slate-300 text-slate-700'}`}
+                        >
+                            Limpiar
+                        </button>
+                    )}
+                </form>
+
+                {errorBusqueda && (
+                    <div className="flex items-center justify-between">
+                        <p className="text-rose-400 text-xs font-medium">{errorBusqueda}</p>
+                        <button
+                            type="button"
+                            onClick={() => setErrorBusqueda('')}
+                            className="text-xs text-slate-400 hover:underline cursor-pointer"
+                        >
+                            Limpiar
+                        </button>
+                    </div>
+                )}
+
+                {personaEncontrada && (
+                    <div className={`p-4 rounded-xl border space-y-3 text-xs ${darkMode ? 'bg-slate-800/60 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                        <div className="flex justify-between font-bold text-sm border-b pb-2 border-slate-700/50">
+                            <span className={textColor}>
+                                {personaEncontrada.nombre}
+                            </span>
+                            <span className="text-emerald-400 uppercase">Estado: {personaEncontrada.estado_actual || personaEncontrada.estado}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                            <div><span className={subTextColor}>Cédula:</span> <span className={`font-mono ${textColor}`}>{personaEncontrada.cedula || 'Sin cédula'}</span></div>
+                            <div><span className={subTextColor}>Teléfono:</span> <span className={textColor}>{personaEncontrada.telefono || 'No registrado'}</span></div>
+                            <div><span className={subTextColor}>Contextura:</span> <span className={textColor}>{personaEncontrada.contextura || 'N/A'}</span></div>
+                            <div><span className={subTextColor}>Estatura:</span> <span className={textColor}>{personaEncontrada.estatura_aprox_cm ? `${personaEncontrada.estatura_aprox_cm} cm` : 'N/A'}</span></div>
+                            <div><span className={subTextColor}>Tono de Piel:</span> <span className={textColor}>{personaEncontrada.tono_piel || 'N/A'}</span></div>
+                            <div><span className={subTextColor}>Ojos / Cabello:</span> <span className={textColor}>{personaEncontrada.color_ojos || 'N/A'} / {personaEncontrada.color_cabello || 'N/A'}</span></div>
+                        </div>
+
+                        <div className="space-y-1 pt-1 border-t border-slate-700/50">
+                            <div><span className={subTextColor}>Señas particulares:</span> <strong className={textColor}>{personaEncontrada.senias_particulares || 'Ninguna'}</strong></div>
+                            <div><span className={subTextColor}>Vestimenta al rescate:</span> <span className={textColor}>{personaEncontrada.vestimenta_descripcion || 'No descrita'}</span></div>
+                        </div>
+
+                        <div className="p-2.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 font-medium">
+                            🏥 Hospital de Derivación: <strong>{personaEncontrada.hospital_derivado || personaEncontrada.hospital_destino?.nombre || 'Asignado en red'}</strong> — Motivo clínico: <span className="text-white font-normal">{personaEncontrada.motivo_clinico || 'Sin especificar'}</span>
+                        </div>
+                    </div>
+                )}
+            </section>
+
+            {/* Sección 1: Red Hospitalaria Activa */}
             <section className="space-y-4">
-                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'
-                    }`}>
+                <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
                     <div>
                         <h2 className={`text-lg font-bold flex items-center gap-2 ${textColor}`}>
                             <Building2 className="w-5 h-5 text-blue-500" />
@@ -154,21 +306,20 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                             >
                                                 {h.estado_operativo}
                                             </span>
-                                            <button
-                                                onClick={() => abrirModalEdicionRapida(h)}
-                                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
-                                                    }`}
-                                                title="Actualizar Capacidad / Ingreso"
-                                            >
-                                                <Edit2 className="w-3.5 h-3.5" />
-                                            </button>
+                                            {usuario && (
+                                                <button
+                                                    onClick={() => abrirModalEdicionRapida(h)}
+                                                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'}`}
+                                                    title="Actualizar Capacidad / Ingreso"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
 
-                                    {/* Indicadores de Capacidad */}
                                     <div className={`grid grid-cols-2 gap-3 pt-3 border-t ${darkMode ? 'border-slate-800/80' : 'border-slate-100'}`}>
-                                        <div className={`p-3 rounded-xl border space-y-2 ${darkMode ? 'bg-slate-800/40 border-slate-700/30' : 'bg-slate-50 border-slate-200'
-                                            }`}>
+                                        <div className={`p-3 rounded-xl border space-y-2 ${darkMode ? 'bg-slate-800/40 border-slate-700/30' : 'bg-slate-50 border-slate-200'}`}>
                                             <div className="flex items-center justify-between text-[11px]">
                                                 <span className={`flex items-center gap-1.5 font-medium ${subTextColor}`}>
                                                     <BedDouble className="w-3.5 h-3.5 text-rose-500" /> UCI
@@ -187,8 +338,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                             </div>
                                         </div>
 
-                                        <div className={`p-3 rounded-xl border space-y-2 ${darkMode ? 'bg-slate-800/40 border-slate-700/30' : 'bg-slate-50 border-slate-200'
-                                            }`}>
+                                        <div className={`p-3 rounded-xl border space-y-2 ${darkMode ? 'bg-slate-800/40 border-slate-700/30' : 'bg-slate-50 border-slate-200'}`}>
                                             <div className="flex items-center justify-between text-[11px]">
                                                 <span className={`flex items-center gap-1.5 font-medium ${subTextColor}`}>
                                                     <Stethoscope className="w-3.5 h-3.5 text-amber-500" /> Urgencias
@@ -214,10 +364,9 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                 </div>
             </section>
 
-            {/* Sección 2: Tabla de Derivaciones y Traslados Procesados */}
+            {/* Sección 2: Tabla de Derivaciones y Traslados */}
             <section className={`${cardBg} border rounded-2xl p-6 shadow-xl space-y-4`}>
-                <div className={`flex items-center justify-between pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'
-                    }`}>
+                <div className={`flex items-center justify-between pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
                     <h2 className={`text-lg font-bold flex items-center gap-2 ${textColor}`}>
                         <Truck className="w-5 h-5 text-amber-500" />
                         Últimas Derivaciones y Traslados Procesados
@@ -256,14 +405,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                                 </span>
                                             </td>
                                             <td className="p-3.5">
-                                                <span
-                                                    className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${t.paciente?.triage === 'VERDE'
-                                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                                                        : t.paciente?.triage === 'ROJO'
-                                                            ? 'bg-rose-500/10 text-rose-500 border-rose-500/30'
-                                                            : 'bg-amber-500/10 text-amber-500 border-amber-500/30'
-                                                        }`}
-                                                >
+                                                <span className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${t.paciente?.triage === 'VERDE' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' : t.paciente?.triage === 'ROJO' ? 'bg-rose-500/10 text-rose-500 border-rose-500/30' : 'bg-amber-500/10 text-amber-500 border-amber-500/30'}`}>
                                                     {t.paciente?.triage === 'VERDE' ? 'BAJA' : t.paciente?.triage === 'ROJO' ? 'ALTA' : 'MEDIA'}
                                                 </span>
                                             </td>
@@ -272,16 +414,12 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                                 {t.distancia_km} km ({t.tiempo_estimado_min} min)
                                             </td>
                                             <td className="p-3.5">
-                                                <span
-                                                    className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase ${getBadgeEstadoPaciente(
-                                                        estadoActual
-                                                    )}`}
-                                                >
+                                                <span className={`inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase ${getBadgeEstadoPaciente(estadoActual)}`}>
                                                     {estadoActual}
                                                 </span>
                                             </td>
                                             <td className="p-3.5 text-right">
-                                                {t.paciente?.id && estadoActual !== 'ATENDIDO' && (
+                                                {usuario && t.paciente?.id && estadoActual !== 'ATENDIDO' && (
                                                     <button
                                                         onClick={() => marcarAtendido(t.paciente.id)}
                                                         className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-3 py-1.5 rounded-lg text-xs inline-flex items-center gap-1.5 transition-all shadow-sm shadow-emerald-600/20 active:scale-95 cursor-pointer"
@@ -309,11 +447,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                 <h3 className={`text-base font-bold ${textColor}`}>Actualizar Capacidad e Ingreso</h3>
                                 <p className={`text-xs ${subTextColor}`}>{hospitalEdit?.nombre}</p>
                             </div>
-                            <button
-                                onClick={() => setModalOperativo(false)}
-                                className={`p-1 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                                    }`}
-                            >
+                            <button onClick={() => setModalOperativo(false)} className={`p-1 rounded-lg transition-colors cursor-pointer ${darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}>
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -348,6 +482,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                     <label className={`block mb-1 font-semibold ${textColor}`}>UCI Totales</label>
                                     <input
                                         type="number"
+                                        min={0}
                                         value={formCapacidad.camas_uci_totales}
                                         onChange={(e) => setFormCapacidad({ ...formCapacidad, camas_uci_totales: parseInt(e.target.value) || 0 })}
                                         className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
@@ -357,6 +492,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                     <label className={`block mb-1 font-semibold ${textColor}`}>UCI Libres</label>
                                     <input
                                         type="number"
+                                        min={0}
                                         value={formCapacidad.camas_uci_libres}
                                         onChange={(e) => setFormCapacidad({ ...formCapacidad, camas_uci_libres: parseInt(e.target.value) || 0 })}
                                         className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
@@ -369,6 +505,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                     <label className={`block mb-1 font-semibold ${textColor}`}>Urgencias Totales</label>
                                     <input
                                         type="number"
+                                        min={0}
                                         value={formCapacidad.camas_urgencia_totales}
                                         onChange={(e) => setFormCapacidad({ ...formCapacidad, camas_urgencia_totales: parseInt(e.target.value) || 0 })}
                                         className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
@@ -378,6 +515,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                     <label className={`block mb-1 font-semibold ${textColor}`}>Urgencias Libres</label>
                                     <input
                                         type="number"
+                                        min={0}
                                         value={formCapacidad.camas_urgencia_libres}
                                         onChange={(e) => setFormCapacidad({ ...formCapacidad, camas_urgencia_libres: parseInt(e.target.value) || 0 })}
                                         className={`w-full p-2.5 rounded-xl border focus:outline-none focus:border-blue-500 font-mono ${inputBg}`}
@@ -389,8 +527,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                                 <button
                                     type="button"
                                     onClick={() => setModalOperativo(false)}
-                                    className={`px-4 py-2 rounded-xl font-semibold cursor-pointer ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
-                                        }`}
+                                    className={`px-4 py-2 rounded-xl font-semibold cursor-pointer ${darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'}`}
                                 >
                                     Cancelar
                                 </button>
