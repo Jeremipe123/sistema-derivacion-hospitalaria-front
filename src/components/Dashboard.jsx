@@ -163,10 +163,10 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
     const tableHeaderBg = darkMode ? 'bg-slate-800/50 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'
     const inputBg = darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'
 
-    // Formatear fecha actual estéticamente
+    // Formatear fecha y hora actual (Hora en formato de 12 horas con AM/PM)
     const opcionesFecha = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }
     const fechaFormateada = fechaHoraActual.toLocaleDateString('es-ES', opcionesFecha)
-    const horaFormateada = fechaHoraActual.toLocaleTimeString('es-ES')
+    const horaFormateada = fechaHoraActual.toLocaleTimeString('es-ES', { hour12: true })
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-8">
