@@ -11,7 +11,9 @@ import {
     X,
     Search,
     Clock,
-    UserCheck
+    UserCheck,
+    ChevronLeft,
+    ChevronRight
 } from 'lucide-react'
 
 export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode = true, usuario = null }) {
@@ -21,6 +23,10 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
 
     // Estado para la fecha y hora en vivo
     const [fechaHoraActual, setFechaHoraActual] = useState(new Date())
+
+    // Estados para la paginación de la tabla de traslados
+    const [paginaActual, setPaginaActual] = useState(1)
+    const [registrosPorPagina, setRegistrosPorPagina] = useState(5)
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -40,12 +46,12 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
     const [personaEncontrada, setPersonaEncontrada] = useState(null)
     const [errorBusqueda, setErrorBusqueda] = useState('')
 
-    // Ordenamiento por Semáforo para Hospitales
+    // Ordenamiento por Semáforo para Hospitales (Limitado exactamente a los 3 más disponibles)
     const ORDEN_ESTADO = { 'DISPONIBLE': 1, 'SATURADO': 2, 'COLAPSADO': 3, 'INACTIVO': 4 }
 
     const hospitalesOrdenados = [...hospitales]
         .sort((a, b) => (ORDEN_ESTADO[a.estado_operativo] || 99) - (ORDEN_ESTADO[b.estado_operativo] || 99))
-        .slice(0, 6)
+        .slice(0, 3)
 
     const [formCapacidad, setFormCapacidad] = useState({
         estado_operativo: 'DISPONIBLE',
@@ -54,6 +60,18 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
         camas_urgencia_totales: 0,
         camas_urgencia_libres: 0
     })
+
+    // Lógica de Paginación para la tabla de Traslados
+    const indiceUltimoRegistro = paginaActual * registrosPorPagina
+    const indicePrimerRegistro = indiceUltimoRegistro - registrosPorPagina
+    const trasladosPaginados = traslados.slice(indicePrimerRegistro, indiceUltimoRegistro)
+    const totalPaginas = Math.ceil(traslados.length / registrosPorPagina) || 1
+
+    const cambiarPagina = (nuevaPagina) => {
+        if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas) {
+            setPaginaActual(nuevaPagina)
+        }
+    }
 
     const getBadgeEstadoHospital = (estado) => {
         switch (estado) {
@@ -155,7 +173,6 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
 
             {/* Recuadro de Bienvenida y Fecha/Hora en vivo */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                {/* Fecha y Hora en Vivo (Grande a la izquierda) */}
                 <div className={`${cardBg} border px-6 py-4 rounded-2xl shadow-xl flex items-center gap-4 shrink-0`}>
                     <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
                         <Clock className="w-6 h-6 animate-pulse" />
@@ -166,7 +183,6 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                     </div>
                 </div>
 
-                {/* Bienvenida (Derecha) */}
                 <section className={`${cardBg} border rounded-2xl p-5 shadow-xl flex items-center gap-3.5 relative overflow-hidden flex-1`}>
                     <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-rose-500/10 to-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-500 flex items-center justify-center text-white shadow-lg shadow-rose-600/30 shrink-0">
@@ -263,7 +279,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                 )}
             </section>
 
-            {/* Sección 1: Red Hospitalaria Activa */}
+            {/* Sección 1: Red Hospitalaria Activa (Limitada exactamente a 3 hospitales) */}
             <section className="space-y-4">
                 <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
                     <div>
@@ -272,7 +288,7 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                             Red Hospitalaria Activa
                         </h2>
                         <p className={`text-xs mt-0.5 ${subTextColor}`}>
-                            Mostrando los {hospitalesOrdenados.length} centros principales en tiempo real
+                            Mostrando los 3 centros principales con mayor disponibilidad en tiempo real
                         </p>
                     </div>
                 </div>
@@ -364,14 +380,30 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                 </div>
             </section>
 
-            {/* Sección 2: Tabla de Derivaciones y Traslados */}
+            {/* Sección 2: Tabla de Derivaciones y Traslados con Paginación */}
             <section className={`${cardBg} border rounded-2xl p-6 shadow-xl space-y-4`}>
-                <div className={`flex items-center justify-between pb-2 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
+                <div className={`flex flex-col sm:flex-row items-center justify-between gap-3 pb-3 border-b ${darkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
                     <h2 className={`text-lg font-bold flex items-center gap-2 ${textColor}`}>
                         <Truck className="w-5 h-5 text-amber-500" />
                         Últimas Derivaciones y Traslados Procesados
                     </h2>
-                    <span className={`text-xs font-medium ${subTextColor}`}>{traslados.length} registros</span>
+
+                    <div className="flex items-center gap-3 text-xs">
+                        <span className={subTextColor}>Mostrar:</span>
+                        <select
+                            value={registrosPorPagina}
+                            onChange={(e) => {
+                                setRegistrosPorPagina(Number(e.target.value))
+                                setPaginaActual(1)
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg border font-bold cursor-pointer ${inputBg}`}
+                        >
+                            <option value={5}>5 registros</option>
+                            <option value={10}>10 registros</option>
+                            <option value={20}>20 registros</option>
+                        </select>
+                        <span className={`font-medium ${subTextColor}`}>Total: {traslados.length}</span>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -387,14 +419,14 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                             </tr>
                         </thead>
                         <tbody className={`divide-y ${darkMode ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
-                            {traslados.length === 0 ? (
+                            {trasladosPaginados.length === 0 ? (
                                 <tr>
                                     <td colSpan={6} className={`text-center py-8 font-medium ${subTextColor}`}>
                                         No hay traslados registrados recientemente.
                                     </td>
                                 </tr>
                             ) : (
-                                traslados.map((t) => {
+                                trasladosPaginados.map((t) => {
                                     const estadoActual = t.paciente?.estado || t.estado || 'PENDIENTE'
                                     return (
                                         <tr key={t.id} className={darkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'}>
@@ -436,6 +468,31 @@ export function Dashboard({ hospitales = [], traslados = [], onUpdate, darkMode 
                         </tbody>
                     </table>
                 </div>
+
+                {/* Controles de Paginación Inferior */}
+                {totalPaginas > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-700/50 text-xs">
+                        <span className={subTextColor}>
+                            Mostrando página <strong className={textColor}>{paginaActual}</strong> de <strong className={textColor}>{totalPaginas}</strong>
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                onClick={() => cambiarPagina(paginaActual - 1)}
+                                disabled={paginaActual === 1}
+                                className={`p-2 rounded-xl border flex items-center gap-1 font-semibold transition-all ${paginaActual === 1 ? 'opacity-40 cursor-not-allowed border-slate-800' : 'cursor-pointer hover:bg-slate-800 border-slate-700 text-slate-200'}`}
+                            >
+                                <ChevronLeft className="w-4 h-4" /> Anterior
+                            </button>
+                            <button
+                                onClick={() => cambiarPagina(paginaActual + 1)}
+                                disabled={paginaActual === totalPaginas}
+                                className={`p-2 rounded-xl border flex items-center gap-1 font-semibold transition-all ${paginaActual === totalPaginas ? 'opacity-40 cursor-not-allowed border-slate-800' : 'cursor-pointer hover:bg-slate-800 border-slate-700 text-slate-200'}`}
+                            >
+                                Siguiente <ChevronRight className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </section>
 
             {/* Modal Editar Ingreso / Capacidad */}
